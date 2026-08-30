@@ -135,6 +135,8 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
     def __init__(
         self,
         *,
+        #custom added
+        demo_uni: Optional[AnyTransitions],
         demonstrations: Optional[AnyTransitions],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
@@ -162,6 +164,8 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
 
         if demonstrations is not None:
             self.set_demonstrations(demonstrations)
+        if demo_uni is not None:
+            self.set_demo_uni(demo_uni)
 
     @abc.abstractmethod
     def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
@@ -175,7 +179,18 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
                 yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
                 `TransitionKind` instance, or a Sequence of Trajectory objects.
         """
+    @abc.abstractmethod
+    def set_demo_uni(self, demonstrations: AnyTransitions) -> None:
+        """Sets the demonstration data.
 
+        Changing the demonstration data on-demand can be useful for
+        interactive algorithms like DAgger.
+
+        Args:
+             demonstrations: Either a Torch `DataLoader`, any other iterator that
+                yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
+                `TransitionKind` instance, or a Sequence of Trajectory objects.
+        """
     @property
     @abc.abstractmethod
     def policy(self) -> policies.BasePolicy:
@@ -277,6 +292,76 @@ def make_data_loader(
         return th_data.DataLoader(
             transitions,
             batch_size=batch_size,
+            collate_fn=types.transitions_collate_fn,
+            **kwargs,
+        )
+    elif isinstance(transitions, Iterable):
+        # Safe to ignore this error since we've already converted Iterable[Trajectory]
+        # `transitions` into Iterable[TransitionMapping]
+        return _WrappedDataLoader(transitions, batch_size)  # type: ignore[arg-type]
+    else:
+        raise TypeError(f"`demonstrations` unexpected type {type(transitions)}")
+def make_data_loader_sample(
+    transitions: AnyTransitions,
+    batch_size: int,
+    n_transitions:int,
+    data_loader_kwargs: Optional[Mapping[str, Any]] = None,
+) -> Iterable[types.TransitionMapping]:
+    """Converts demonstration data to Torch data loader.
+
+    Args:
+        transitions: Transitions expressed directly as a `types.TransitionsMinimal`
+            object, a sequence of trajectories, or an iterable of transition
+            batches (mappings from keywords to arrays containing observations, etc).
+        batch_size: The size of the batch to create. Does not change the batch size
+            if `transitions` is already an iterable of transition batches.
+        data_loader_kwargs: Arguments to pass to `th_data.DataLoader`.
+
+    Returns:
+        An iterable of transition batches.
+
+    Raises:
+        ValueError: if `transitions` is an iterable over transition batches with batch
+            size not equal to `batch_size`; or if `transitions` is transitions or a
+            sequence of trajectories with total timesteps less than `batch_size`.
+        TypeError: if `transitions` is an unsupported type.
+    """
+    if batch_size <= 0:
+        raise ValueError(f"batch_size={batch_size} must be positive.")
+
+    if isinstance(transitions, Iterable):
+        # Inferring the correct type here is difficult with generics.
+        (
+            first_item,
+            transitions,
+        ) = util.get_first_iter_element(  # type: ignore[assignment]
+            transitions,
+        )
+        if isinstance(first_item, types.Trajectory):
+            transitions = cast(Iterable[types.Trajectory], transitions)
+            transitions = rollout.flatten_trajectories(list(transitions))
+
+    if isinstance(transitions, types.TransitionsMinimal):
+        if n_transitions < batch_size:
+            raise ValueError(
+                f"Number of transitions in `demonstrations` {n_transitions} "
+                f"is smaller than batch size {batch_size}.",
+            )
+
+        kwargs: Mapping[str, Any] = {
+            "drop_last": True,
+            **(data_loader_kwargs or {}),
+        }
+        #samples data and put them back
+        sampler = th_data.RandomSampler(
+            transitions,
+            replacement = True,
+            num_samples = n_transitions
+        )
+        return th_data.DataLoader(
+            transitions,
+            batch_size=batch_size,
+            sampler = sampler,
             collate_fn=types.transitions_collate_fn,
             **kwargs,
         )
