@@ -162,9 +162,6 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
 
         if demonstrations is not None:
             self.set_demonstrations(demonstrations)
-        if demo_uni is not None:
-            self.set_demo_uni(demo_uni)
-
     @abc.abstractmethod
     def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
         """Sets the demonstration data.
