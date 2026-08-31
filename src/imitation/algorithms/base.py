@@ -135,8 +135,6 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
     def __init__(
         self,
         *,
-        #custom added
-        demo_uni: Optional[AnyTransitions],
         demonstrations: Optional[AnyTransitions],
         custom_logger: Optional[imit_logger.HierarchicalLogger] = None,
         allow_variable_horizon: bool = False,
@@ -169,18 +167,6 @@ class DemonstrationAlgorithm(BaseImitationAlgorithm, Generic[TransitionKind]):
 
     @abc.abstractmethod
     def set_demonstrations(self, demonstrations: AnyTransitions) -> None:
-        """Sets the demonstration data.
-
-        Changing the demonstration data on-demand can be useful for
-        interactive algorithms like DAgger.
-
-        Args:
-             demonstrations: Either a Torch `DataLoader`, any other iterator that
-                yields dictionaries containing "obs" and "acts" Tensors or NumPy arrays,
-                `TransitionKind` instance, or a Sequence of Trajectory objects.
-        """
-    @abc.abstractmethod
-    def set_demo_uni(self, demonstrations: AnyTransitions) -> None:
         """Sets the demonstration data.
 
         Changing the demonstration data on-demand can be useful for
