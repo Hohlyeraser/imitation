@@ -570,7 +570,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         #n_epochs just there to not break the Code
         n_epochs = 1
         n_batches: Optional[int] = None
-        on_batch_end: Optional[Callable[[], None]] = None,
+        on_batch_end: Optional[Callable[[], None]] = None
         if reset_tensorboard:
             self._bc_logger.reset_tensorboard_steps()
         self._bc_logger.log_epoch(0)
