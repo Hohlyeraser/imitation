@@ -534,9 +534,7 @@ class BC(algo_base.DemonstrationAlgorithm):
         self,
         *,
         n_transitions ,
-        n_batches: Optional[int] = None,
         on_epoch_end: Optional[Callable[[], None]] = None,
-        on_batch_end: Optional[Callable[[], None]] = None,
         log_interval: int = 500,
         log_rollouts_venv: Optional[vec_env.VecEnv] = None,
         log_rollouts_n_episodes: int = 5,
@@ -550,12 +548,8 @@ class BC(algo_base.DemonstrationAlgorithm):
                 
 
         Args:
-            n_batches: Number of batches loaded from dataset before ending training.
-                Provide exactly one of `n_epochs` and `n_batches`.
             on_epoch_end: Optional callback with no parameters to run at the end of each
                 epoch.
-            on_batch_end: Optional callback with no parameters to run at the end of each
-                batch.
             log_interval: Log stats after every log_interval batches.
             log_rollouts_venv: If not None, then this VecEnv (whose observation and
                 actions spaces must match `self.observation_space` and
@@ -575,6 +569,8 @@ class BC(algo_base.DemonstrationAlgorithm):
         assert (n_transitions//2)%self.minibatch_size == 0, "number of tranistions needs to be a multiple of mini batch size and divisible by two"
         #n_epochs just there to not break the Code
         n_epochs = 1
+        n_batches: Optional[int] = None
+        on_batch_end: Optional[Callable[[], None]] = None,
         if reset_tensorboard:
             self._bc_logger.reset_tensorboard_steps()
         self._bc_logger.log_epoch(0)
