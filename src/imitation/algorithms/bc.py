@@ -547,6 +547,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 
 
         Args:
+            n_transistions: number of transition to train the agent.
             on_epoch_end: Optional callback with no parameters to run at the end of each
                 epoch.
             log_interval: Log stats after every log_interval batches.
@@ -561,7 +562,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             reset_tensorboard: If True, then start plotting to Tensorboard from x=0
                 even if `.train()` logged to Tensorboard previously. Has no practical
                 effect if `.train()` is being called for the first time.
-            uni_rate: control strength to have a uniform distriubtion on the unlearning dataset
+            uni_rate: control strength to have a uniform distriubtion on the retain dataset.
         """
         assert n_transitions % 2 == 0, "number of transitions needs to be an even number"
         assert (n_transitions//2)%self.minibatch_size == 0, "number of tranistions needs to be a multiple of mini batch size and divisible by two"
@@ -569,6 +570,8 @@ class BC(algo_base.DemonstrationAlgorithm):
         n_epochs = 1
         n_batches: Optional[int] = None
         on_batch_end: Optional[Callable[[], None]] = None
+
+
         if reset_tensorboard:
             self._bc_logger.reset_tensorboard_steps()
         self._bc_logger.log_epoch(0)
@@ -657,7 +660,7 @@ class BC(algo_base.DemonstrationAlgorithm):
             for _ in range(length):
                 (batch_num, minibatch_size, num_samples_so_far), batch = next(iter_forget)
                 (batch_num_retain, minibatch_size_retain, num_samples_so_far_retain), batch_retain = next(iter_retain)
-
+                #turn unlearn dataset to tensor
                 obs_tensor: Union[th.Tensor, Dict[str, th.Tensor]]
                 obs_tensor = types.map_maybe_dict(
                                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
@@ -665,7 +668,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                             )
                 acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
                 training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
-
+                # turn retain dataset to tensor
                 obs_tensor_retain =  types.map_maybe_dict(
                                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
                                 types.maybe_unwrap_dictobs(batch_retain["obs"]),
