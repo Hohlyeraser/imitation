@@ -1,4 +1,4 @@
-# Adapted Lubrary
+# Adapted Library
 This repository just extended the behavorial cloning class to simulate the assistant model traning from the paper [ULD](https://arxiv.org/abs/2406.08607). The current implementation just works for discrete action spaces.
 
 
