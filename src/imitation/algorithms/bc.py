@@ -541,7 +541,6 @@ class BC(algo_base.DemonstrationAlgorithm):
         progress_bar: bool = True,
         reset_tensorboard: bool = False,
         uni_rate:float = 1.0,
-        diagramm:bool = False
     ):
         """needs to be updated just works for categorical distribution / discrete single action space 
         look into kl divergence comment
@@ -563,7 +562,6 @@ class BC(algo_base.DemonstrationAlgorithm):
                 even if `.train()` logged to Tensorboard previously. Has no practical
                 effect if `.train()` is being called for the first time.
             uni_rate: control strength to have a uniform distriubtion on the unlearning dataset
-            diagramm: if true plots a diagramm to see prob distribution on forget and retain to take the true action
         """
         assert n_transitions % 2 == 0, "number of transitions needs to be an even number"
         assert (n_transitions//2)%self.minibatch_size == 0, "number of tranistions needs to be a multiple of mini batch size and divisible by two"
@@ -655,15 +653,10 @@ class BC(algo_base.DemonstrationAlgorithm):
                 length = n_batches * mini_per_batch
             else:
                 length = n_transitions//2//self.minibatch_size *n_epochs
-            forget_x = []
-            retain_x = []
-            prob_retain = []
-            prob_forget = []
+           
             for _ in range(length):
                 (batch_num, minibatch_size, num_samples_so_far), batch = next(iter_forget)
-                forget_x.append(num_samples_so_far)
                 (batch_num_retain, minibatch_size_retain, num_samples_so_far_retain), batch_retain = next(iter_retain)
-                retain_x.append(num_samples_so_far_retain)
 
                 obs_tensor: Union[th.Tensor, Dict[str, th.Tensor]]
                 obs_tensor = types.map_maybe_dict(
@@ -672,16 +665,11 @@ class BC(algo_base.DemonstrationAlgorithm):
                             )
                 acts = util.safe_to_tensor(batch["acts"], device=self.policy.device)
                 training_metrics = self.loss_calculator(self.policy, obs_tensor, acts)
-                prob_forget.append(training_metrics.prob_true_act.item())
 
                 obs_tensor_retain =  types.map_maybe_dict(
                                 lambda x: util.safe_to_tensor(x, device=self.policy.device),
                                 types.maybe_unwrap_dictobs(batch_retain["obs"]),
                             )
-                acts_retain = util.safe_to_tensor(batch_retain["acts"], device=self.policy.device)
-                #visualize
-                training_metrics_forget = self.loss_calculator(self.policy, obs_tensor_retain, acts_retain)
-                prob_retain.append(training_metrics_forget.prob_true_act.item())
                  #kl divergence
                 logits = self.obtain_logits(self.policy, obs_tensor_retain)
                 log_probs = F.log_softmax(logits,dim= 1)
@@ -698,20 +686,3 @@ class BC(algo_base.DemonstrationAlgorithm):
             # if there remains an incomplete batch
                 batch_num += 1
                 process_batch()
-            if diagramm:
-                #diagramm forget data
-                plt.figure(figsize=(8, 5))
-                plt.plot(forget_x, prob_forget, color="tab:blue")
-                plt.xlabel("Number of samples")
-                plt.ylabel("Probability of true action")
-                plt.title("Forget-Set: True action probability during training")
-                plt.grid(True)
-                #diagramm retain data
-                plt.figure(figsize=(8, 5))
-                plt.plot(retain_x, prob_retain, color="tab:blue")
-                plt.xlabel("Number of samples")
-                plt.ylabel("Probability of true action")
-                plt.title("Retain-Set: True action probability during training")
-                plt.grid(True)
-
-                plt.show()   
