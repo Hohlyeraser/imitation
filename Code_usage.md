@@ -1,5 +1,5 @@
 # Adapted Library
-This repository just extended the behavorial cloning class to simulate the assistant model traning from the paper [ULD](https://arxiv.org/abs/2406.08607). The current implementation just works for discrete action spaces. Note that most function in ULD just work in a vectorized environment containing one environment
+This repository just extended the behavorial cloning class to simulate the assistant model traning from the paper [ULD](https://arxiv.org/abs/2406.08607). The current implementation just works for discrete action spaces. Furthermore the behavorial cloning class got an interface to return the logits after receiving the state as an input.
 
 
 # Usage
