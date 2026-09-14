@@ -284,8 +284,6 @@ class BC(algo_base.DemonstrationAlgorithm):
         demo_uni: Optional[algo_base.AnyTransitions] = None,
         batch_size: int = 32,
         minibatch_size: Optional[int] = None,
-        optimizer_cls: Type[th.optim.Optimizer] = th.optim.Adam,
-        optimizer_kwargs: Optional[Mapping[str, Any]] = None,
         ent_weight: float = 1e-3,
         l2_weight: float = 0.0,
         device: Union[str, th.device] = "auto",
@@ -312,18 +310,13 @@ class BC(algo_base.DemonstrationAlgorithm):
                 facilitating training with larger batch sizes, but is
                 generally slower. Must be a factor of `batch_size`.
                 Optional, defaults to `batch_size`.
-            optimizer_cls: optimiser to use for supervised training.
-            optimizer_kwargs: keyword arguments, excluding learning rate and
-                weight decay, for optimiser construction.
             ent_weight: scaling applied to the policy's entropy regularization.
             l2_weight: scaling applied to the policy's L2 regularization.
             device: name/identity of device to place policy on.
             custom_logger: Where to log to; if None (default), creates a new logger.
-
+        
         Raises:
-            ValueError: If `weight_decay` is specified in `optimizer_kwargs` (use the
-                parameter `l2_weight` instead), or if the batch size is not a multiple
-                of the minibatch size.
+                ValueError: If the batch size is not a multiple of the minibatch size
         """
         self._demo_data_loader: Optional[Iterable[types.TransitionMapping]] = None
         #added
@@ -364,13 +357,10 @@ class BC(algo_base.DemonstrationAlgorithm):
         assert self.policy.observation_space == self.observation_space
         assert self.policy.action_space == self.action_space
 
-        if optimizer_kwargs:
-            if "weight_decay" in optimizer_kwargs:  # pragma: no cover
-                raise ValueError("Use the parameter l2_weight instead of weight_decay.")
-        optimizer_kwargs = optimizer_kwargs or {}
-        self.optimizer = optimizer_cls(
+        self.optimizer = th.optim.Adam(
             self.policy.parameters(),
-            **optimizer_kwargs,
+            lr  = 0.001,
+            betas = (0.9,0.999)
         )
 
         self.loss_calculator = BehaviorCloningLossCalculator(ent_weight, l2_weight)
@@ -681,7 +671,7 @@ class BC(algo_base.DemonstrationAlgorithm):
                 div = F.kl_div(log_probs, uniform, reduction = 'batchmean')
 
 
-                loss = training_metrics.loss * minibatch_size / self.batch_size + uni_rate * minibatch_size_retain / self.batch_size * div
+                loss = training_metrics.neglogp * minibatch_size / self.batch_size + uni_rate * minibatch_size_retain / self.batch_size * div
                 loss.backward()
                 if num_samples_so_far % self.batch_size == 0:
                     process_batch()
